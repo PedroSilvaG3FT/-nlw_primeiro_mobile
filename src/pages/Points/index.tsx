@@ -8,11 +8,13 @@ import {
   Text,
   ScrollView,
   Image,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import MapView, { Marker } from "react-native-maps";
 import { SvgUri } from "react-native-svg";
 import api from "../../services/api";
+import * as Location from "expo-location";
 
 interface Item {
   id: number;
@@ -24,6 +26,28 @@ const Points: React.FC = () => {
   const navigation = useNavigation();
   const [items, setItems] = useState<Item[]>([]);
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
+  const [initialPosition, setInitialPosition] = useState<[number, number]>([0,0]);
+
+  useEffect(() => {
+    async function loadPosition() {
+      const { status } = await Location.requestPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert("Ops...", "Precisa de permissão cara");
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync();
+      const { latitude, longitude } = location.coords;
+
+      setInitialPosition([
+        latitude,
+        longitude
+      ]);
+    }
+
+    loadPosition();
+  }, []);
 
   useEffect(() => {
     api.get("items").then((response) => {
@@ -64,33 +88,36 @@ const Points: React.FC = () => {
         </Text>
 
         <View style={styles.mapContainer}>
-          <MapView
-            style={styles.map}
-            initialRegion={{
-              latitude: -13.702797,
-              longitude: -69.6865109,
-              latitudeDelta: 0,
-              longitudeDelta: 0,
-            }}
-          >
-            <Marker
-              onPress={handleNavigateToDetail}
-              coordinate={{
-                latitude: -13.702797,
-                longitude: -69.6865109,
+          {initialPosition[0] !== 0 && (
+            <MapView
+              style={styles.map}
+              loadingEnabled={initialPosition[0] === 0}
+              initialRegion={{
+                latitude: initialPosition[0],
+                longitude: initialPosition[1],
+                latitudeDelta: 0,
+                longitudeDelta: 0,
               }}
             >
-              <View style={styles.mapMarkerContainer}>
-                <Image
-                  style={styles.mapMarkerImage}
-                  source={{
-                    uri: "http://192.168.1.12:3333/uploads/lampadas.svg",
-                  }}
-                />
-                <Text style={styles.mapMarkerTitle}> Teste</Text>
-              </View>
-            </Marker>
-          </MapView>
+              <Marker
+                onPress={handleNavigateToDetail}
+                coordinate={{
+                  latitude: -13.702797,
+                  longitude: -69.6865109,
+                }}
+              >
+                <View style={styles.mapMarkerContainer}>
+                  <Image
+                    style={styles.mapMarkerImage}
+                    source={{
+                      uri: "http://192.168.1.12:3333/uploads/lampadas.svg",
+                    }}
+                  />
+                  <Text style={styles.mapMarkerTitle}> Teste</Text>
+                </View>
+              </Marker>
+            </MapView>
+          )}
         </View>
       </View>
 
@@ -106,7 +133,7 @@ const Points: React.FC = () => {
             <TouchableOpacity
               style={[
                 styles.item,
-                selectedItems.includes(item.id) ? styles.selectedItem : {}
+                selectedItems.includes(item.id) ? styles.selectedItem : {},
               ]}
               onPress={() => handleSelectItem(item.id)}
               activeOpacity={0.6}
