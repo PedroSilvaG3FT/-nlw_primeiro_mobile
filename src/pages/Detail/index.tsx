@@ -1,15 +1,58 @@
-import React from "react";
+import React ,{useEffect, useState}from "react";
 
 import { View, Image, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather as Icon, FontAwesome } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { RectButton } from "react-native-gesture-handler"
+import api from "../../services/api";
+import * as MailComposer from "expo-mail-composer";
+
+interface Params {
+  point_id: number
+};
+
+interface Data {
+  point: {
+   image: string,
+   name: string,
+   email: string,
+   whatsapp: string,
+   city: string,
+   uf: string
+
+  }
+  items: {
+    title: string
+  }[]
+}
 
 const Detail: React.FC = () => {
   const navigation = useNavigation();
+  const route = useRoute();
+  const [data, setData] = useState<Data>({} as Data);
+
+  const routeParams = route.params as Params;
+
   function handleNavigateBack() {
     navigation.goBack();
+  }
+
+  useEffect(() => {
+    api.get(`points/${routeParams.point_id}`).then(response => {
+      setData(response.data)
+    })
+  },[])
+
+  function handleMailComposeMail() {
+    MailComposer.composeAsync({
+      subject: "Assunto do Email",
+      recipients: [data.point.email],
+    })
+  }
+
+  if(!data.point) {
+    return null;
   }
 
   return (
@@ -22,15 +65,18 @@ const Detail: React.FC = () => {
         <Image
           style={styles.pointImage}
           source={{
-            uri:
-              "http://www.prefeituradeatibaia.com.br/wp-content/uploads/2018/10/Feira-Livre-Em-Atibaia.jpg",
+            uri: data.point.image,
           }}
         />
-        <Text style={styles.pointName}>Nome</Text>
-        <Text style={styles.pointItems}>Items...</Text>
+        <Text style={styles.pointName}>{data.point.name}</Text>
+        <Text style={styles.pointItems}>
+          {data.items.map((item) => item.title).join(", ")}
+        </Text>
         <View style={styles.address}>
           <Text style={styles.addressTitle}>Endereço</Text>
-          <Text style={styles.addressContent}>Endereço aqui</Text>
+          <Text style={styles.addressContent}>
+            {data.point.city}, {data.point.uf}
+          </Text>
         </View>
       </View>
 
@@ -40,7 +86,7 @@ const Detail: React.FC = () => {
           <Text style={styles.buttonText}>Whatsapp</Text>
         </RectButton>
 
-        <RectButton style={styles.button}>
+        <RectButton style={styles.button} onPress={handleMailComposeMail}>
           <Icon name="mail" size={20} color="#FFF" />
           <Text style={styles.buttonText}>E-mail</Text>
         </RectButton>
